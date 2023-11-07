@@ -1,0 +1,82 @@
+<?php
+
+// Include necessary libraries
+require 'vendor/autoload.php'; // Assuming you have Guzzle installed
+require 'db_connection.php'; // Include your database connection file
+
+// Function to download page content
+function downloadPage($url) {
+    $client = new \GuzzleHttp\Client();
+    $response = $client->request('GET', $url);
+    return (string) $response->getBody();
+}
+
+// Function to parse and extract headings, abstracts, pictures, and links
+function extractInfo($html) {
+    $dom = new DOMDocument;
+    libxml_use_internal_errors(true);
+    $dom->loadHTML($html);
+
+    $sections = $dom->getElementsByTagName('section');
+
+    $data = array();
+
+    foreach ($sections as $section) {
+        $heading = $section->getElementsByTagName('span')->item(0)->textContent;
+        $abstract = $section->getElementsByTagName('p')->item(0)->textContent;
+
+        $image = null;
+        $imageElement = $section->getElementsByTagName('img')->item(0);
+        if ($imageElement) {
+            $image = $imageElement->getAttribute('src');
+        }
+
+        $links = array();
+        $linkElements = $section->getElementsByTagName('a');
+        foreach ($linkElements as $linkElement) {
+            $links[] = $linkElement->getAttribute('href');
+        }
+
+        $data[] = array(
+            'heading' => $heading,
+            'abstract' => $abstract,
+            'image' => $image,
+            'links' => implode(", ", $links)
+        );
+    }
+
+    return $data;
+}
+
+// Connect to the database (Assuming you have a db_connection.php file with appropriate credentials)
+$conn = getDBConnection();
+
+// Download the page content
+$url = 'https://www.wikipedia.org/';
+$html = downloadPage($url);
+
+// Extract information
+$sectionsData = extractInfo($html);
+
+// Insert data into the database
+foreach ($sectionsData as $sectionData) {
+    $dateCreated = date('Y-m-d H:i:s');
+    $title = $sectionData['heading'];
+    $url = ''; // You can set a URL if available
+    $picture = $sectionData['image'];
+    $abstract = $sectionData['abstract'];
+
+    $sql = "INSERT INTO wiki_sections (date_created, title, url, picture, abstract)
+            VALUES ('$dateCreated', '$title', '$url', '$picture', '$abstract')";
+
+    if ($conn->query($sql) === TRUE) {
+        echo "Record inserted successfully<br>";
+    } else {
+        echo "Error: " . $sql . "<br>" . $conn->error;
+    }
+}
+
+// Close the database connection
+$conn->close();
+
+?>
