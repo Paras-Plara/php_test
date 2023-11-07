@@ -1,0 +1,11 @@
+<php
+    $glob = glob("/datafiles/*.ixt");
+    foreach($glob as $file) {
+        $file = basename($file, '.ixt');
+        if(preg_match("/^[A-Za-z0-9]+$/", $file)) {
+            $sortedFiles[] = $file;
+        }
+    }
+    rsort($sortedFiles);
+    echo '<pre>'; print_r($sortedFiles); 
+?>
