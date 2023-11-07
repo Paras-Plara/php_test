@@ -1,0 +1,75 @@
+<?php
+  class TableCreator {
+      private $dbConnection;
+  
+      public function __construct($host, $username, $password, $database) {
+          // Connect to the database
+          $this->dbConnection = new mysqli($host, $username, $password, $database);
+  
+          // Check connection
+          if ($this->dbConnection->connect_error) {
+              die("Connection failed: " . $this->dbConnection->connect_error);
+          }
+  
+          // Create and fill the table
+          $this->create();
+          $this->fill();
+      }
+  
+      private function create() {
+          $query = "CREATE TABLE IF NOT EXISTS Test (
+                      id INT AUTO_INCREMENT PRIMARY KEY,
+                      script_name VARCHAR(25),
+                      start_time DATETIME,
+                      end_time DATETIME,
+                      result ENUM('normal', 'illegal', 'failed', 'success')
+                  )";
+  
+          $this->dbConnection->query($query);
+      }
+  
+      private function fill() {
+          $script_names = ['Script A', 'Script B', 'Script C'];
+          $results = ['normal', 'illegal', 'failed', 'success'];
+  
+          for ($i = 0; $i < 10; $i++) {
+              $script_name = $script_names[array_rand($script_names)];
+              $start_time = date('Y-m-d H:i:s', strtotime("-$i days"));
+              $end_time = date('Y-m-d H:i:s');
+              $result = $results[array_rand($results)];
+  
+              $query = "INSERT INTO Test (script_name, start_time, end_time, result)
+                        VALUES ('$script_name', '$start_time', '$end_time', '$result')";
+  
+              $this->dbConnection->query($query);
+          }
+      }
+  
+      public function get() {
+          $query = "SELECT * FROM Test WHERE result IN ('normal', 'success')";
+          $result = $this->dbConnection->query($query);
+  
+          if ($result->num_rows > 0) {
+              $data = array();
+  
+              while ($row = $result->fetch_assoc()) {
+                  $data[] = $row;
+              }
+  
+              return $data;
+          } else {
+              return array();
+          }
+      }
+  
+      public function __destruct() {
+          // Close the database connection when the object is destroyed
+          $this->dbConnection->close();
+      }
+  }
+
+  $tableCreator = new TableCreator('localhost', 'username', 'password', 'database_name');
+  $data = $tableCreator->get();
+  print_r($data);
+
+?>
